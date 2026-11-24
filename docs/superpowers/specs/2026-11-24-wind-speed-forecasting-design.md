@@ -124,9 +124,9 @@ Paper sendiri mengakui:
 - Variabel kontinu (wind speed, temperature, RH, pressure): rata-rata semua menit valid dalam satu hari.
 - Wind direction: hitung rata-rata vektor:
   - `x = mean(sin(dir))`, `y = mean(cos(dir))`
-  - `dir_mean = atan2(y, x)` dikonversi ke [0, 360)
+  - `dir_mean = atan2(x, y)` dikonversi ke [0, 360)
   - Simpan `wind_dir_sin = sin(dir_mean)`, `wind_dir_cos = cos(dir_mean)`.
-- Precipitation: tentukan apakah kolom akumulatif reset per hari. Jika ya, ambil nilai akhir hari atau selisih; jika tidak, jumlahkan. Metode final harus diverifikasi pada beberapa hari hujan dan didokumentasikan.
+- Precipitation: kolom ini adalah akumulasi harian yang reset sekitar 00:01. Nilai pada 00:00 adalah sisa hari sebelumnya (*stale*). **Buang menit 00:00, lalu ambil `max` harian.** Jangan `sum`. Aturan ini sudah diverifikasi pada Januari 2023 dan Februari 2020; contoh: 2023-01-03 00:00 = 2,286 mm (stale), hujan aktual hari itu = 0.
 - **Agregasi bulanan (sanity check):** hitung rata-rata bulanan langsung dari data 1 menit, bukan dari rata-rata harian. Untuk wind direction, gunakan vector mean. Ini lebih dekat ke cara paper mengagregasi data bulanan. Laporkan juga jumlah menit valid per bulan.
 - Hari dengan target wind speed hilang: drop dari dataset modeling.
 - Hari dengan fitur hilang: interpolasi linear dengan batas gap pendek (misalnya maksimal 2 hari), lalu drop sisa NaN. Jumlah hari yang di-drop harus dilaporkan.

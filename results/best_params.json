@@ -1,0 +1,26 @@
+{
+  "SVR": {
+    "params": {
+      "svr__C": 1,
+      "svr__epsilon": 0.01,
+      "svr__gamma": "scale"
+    },
+    "val_rmse": 2.018653675755969
+  },
+  "Fine Tree": {
+    "params": {
+      "max_depth": 5,
+      "min_samples_leaf": 8
+    },
+    "val_rmse": 2.032548887802719
+  },
+  "Random Forest": {
+    "params": {
+      "max_depth": 20,
+      "max_features": "sqrt",
+      "min_samples_leaf": 4,
+      "n_estimators": 300
+    },
+    "val_rmse": 1.9748501685540825
+  }
+}

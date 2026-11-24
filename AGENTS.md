@@ -12,10 +12,12 @@ Tugas Akhir: replikasi ringan Altork (2025) sebagai *sanity check*, lalu ekstens
 ## Source of truth
 
 1. **Design/scope:** `docs/superpowers/specs/2026-11-24-wind-speed-forecasting-design.md`
-2. **Execution plan:** `docs/superpowers/plans/2026-11-24-wind-speed-forecasting/00-overview.md`, lalu task plan `01`–`09` di folder yang sama, dikerjakan berurutan.
+2. **Hasil kerja:** `report.md` dan `results/*.csv` (semua angka laporan harus berasal dari sini).
 3. **Operating rules:** file ini.
 
-Jika terjadi konflik: design doc menang untuk scope, plan menang untuk urutan eksekusi, file ini menang untuk aturan operasional.
+**Arsip plan:** rangkaian plan eksekusi `00`–`09` sudah selesai dikerjakan seluruhnya dan dipindahkan ke `docs/superpowers/.old/plans/2026-11-24-wind-speed-forecasting/`. Folder itu hanya catatan sejarah urutan pengerjaan — **bukan** acuan kerja aktif. Pekerjaan baru (revisi, eksperimen tambahan, revisi laporan) memerlukan plan baru di `docs/superpowers/plans/`.
+
+Jika terjadi konflik: design doc menang untuk scope, file ini menang untuk aturan operasional, dan hasil di `results/` menang atas klaim naratif mana pun.
 
 ## Environment
 
@@ -39,12 +41,12 @@ Jika terjadi konflik: design doc menang untuk scope, plan menang untuk urutan ek
   - `Relative Humidity [%]` → `relative_humidity`
   - `Station Pressure [mBar]` → `pressure`
   - `Precipitation (Accumulated) [mm]` → `precipitation`
-- Sentinel `-9999`, `-7999`, `-6999`, `-999` → `NaN`.
+- Sentinel `-99999`, `-9999`, `-7999`, `-6999`, `-999` → `NaN`, lalu masking batas fisik longgar (`PHYSICAL_BOUNDS` di `scripts/preprocess.py`) untuk glitch sensor yang tidak memakai kode sentinel.
 - **Completeness harian:** minimal 75% menit valid (1.080 dari 1.440 menit). Di bawah itu, agregat harian variabel tersebut adalah `NaN`.
 - **Presipitasi adalah akumulasi harian yang reset sekitar 00:01.** Nilai pada 00:00 adalah sisa hari sebelumnya (*stale*). **Buang menit 00:00, lalu ambil `max` harian.** Jangan pernah menjumlahkan kolom ini; `sum` akan menghasilkan ribuan mm.
 - **Arah angin adalah data sirkular.** Gunakan *vector mean*: `atan2(mean(sin(dir)), mean(cos(dir)))`, lalu encode sin/cos. Jangan rata-ratakan derajat secara linear. 360° = 0°.
 - **Agregat bulanan dihitung langsung dari data 1 menit**, bukan dari rata-rata harian.
-- Jangan menginterpolasi `wind_speed_50m` atau target. Drop baris dengan target atau lag yang hilang.
+- **Gap fitur hanya boleh diisi secara kausal:** `ffill` maksimal 2 hari (`fill_feature_gaps`). Jangan pakai interpolasi linear `limit_area="inside"` — pada gap 1–2 hari ia menarik nilai hari t+1 masuk ke fitur hari t. `wind_speed_50m` dan target tidak pernah diisi; drop baris dengan target atau lag yang hilang.
 - **Kontrak fitur/target:** fitur hanya memakai data sampai akhir hari t (23:59); target adalah `wind_speed_50m` hari t+1. Meteorologi hari t+1 tidak boleh masuk fitur.
 
 ## Aturan modeling yang tidak boleh dilanggar
@@ -72,7 +74,7 @@ Jika terjadi konflik: design doc menang untuk scope, plan menang untuk urutan ek
 
 ## Working agreement
 
-- Kerjakan plan task-by-task; commit setelah setiap task dengan pesan yang deskriptif.
+- Kerjakan plan task-by-task; commit setelah setiap task dengan pesan yang deskriptif. Plan aktif ada di `docs/superpowers/plans/`; kalau folder itu kosong, tulis plan baru dulu sebelum mengubah kode.
 - Jangan mengubah design doc atau file ini tanpa diminta.
 - Jangan commit `data/raw/`, `.venv/`, atau notebook checkpoint.
 - Kalau hasil bertentangan dengan ekspektasi, laporkan apa adanya; jangan tuning agar cocok dengan paper.

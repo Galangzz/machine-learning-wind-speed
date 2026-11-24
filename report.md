@@ -74,7 +74,7 @@ Dari 60 bulan yang diproses:
 | Temuan | Jumlah |
 |---|---|
 | Bulan dengan menit duplikat di sumber | 2 bulan (2019-08: 60 menit; 2023-05: 13 menit) |
-| Bulan dengan baris kurang dari ekspektasi | 2 bulan (2021-05: 44.625 dari 44.640; 2023-03: 44.631) |
+| Bulan dengan baris kurang dari ekspektasi | 3 bulan (2019-08: 44.580 dari 44.640; 2021-05: 44.625; 2023-03: 44.631) |
 | Menit bertanda `-99999` (tak terdaftar sebagai sentinel di protokol awal) | 11 menit pada 2021-07, di keenam kolom modeling |
 | Menit temperatur mustahil (−266,9 sampai −106,1 °C) | 27 menit |
 | Total menit sentinel | 19.317 menit (dominan `-7999` pada temperatur: 17.660 menit) |

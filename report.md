@@ -7,7 +7,7 @@
 
 ## Abstrak
 
-Penelitian ini melakukan replikasi ringan Altork (2025) sebagai *sanity check*, lalu memperluasnya menjadi tugas peramalan yang operasional: memprediksi rata-rata kecepatan angin harian pada ketinggian 50 m untuk hari t+1 menggunakan data National Wind Technology Center M2, Boulder, Colorado, periode 2019–2023. Data satu menit dari MIDC diagregasi menjadi 1.826 observasi harian dan 60 observasi bulanan. Replikasi bulanan memakai lima input dan split acak 70/15/15 seperti paper, sedangkan eksperimen utama memakai 16 fitur (delapan lag kecepatan angin, arah angin dalam sin/cos, empat variabel meteorologi, dan dua fitur kalender) dengan split kronologis: latih 2019–2021, validasi 2022, uji 2023. Lima predictor dibandingkan: persistence, Linear Regression, SVR RBF, Fine Tree, dan Random Forest. Pada data uji 2023, seluruh model ML mengalahkan persistence; SVR memberikan RMSE terendah 2,0044 m/s (reduksi 23,73% terhadap persistence 2,6282 m/s), diikuti Random Forest 2,0045 m/s, Linear Regression 2,0271 m/s, dan Fine Tree 2,1515 m/s. Namun R² terbaik hanya 0,0825, jauh di bawah R² 0,97 yang dilaporkan paper. Selisih ini bukan kegagalan implementasi, melainkan konsekuensi dari perubahan protokol: paper melakukan regresi *same-period* pada data bulanan yang telah dihaluskan, sedangkan studi ini meramalkan nilai yang belum teramati pada resolusi harian.
+Penelitian ini melakukan replikasi ringan Altork (2025) sebagai *sanity check*, lalu memperluasnya menjadi tugas peramalan yang operasional: memprediksi rata-rata kecepatan angin harian pada ketinggian 50 m untuk hari t+1 menggunakan data National Wind Technology Center M2, Boulder, Colorado, periode 2019–2023. Data satu menit dari MIDC diagregasi menjadi 1.826 observasi harian dan 60 observasi bulanan. Replikasi bulanan memakai lima input dan split acak 70/15/15 seperti paper, sedangkan eksperimen utama memakai 16 fitur (delapan lag kecepatan angin, arah angin dalam sin/cos, empat variabel meteorologi, dan dua fitur kalender) dengan split kronologis: latih 2019–2021, validasi 2022, uji 2023. Lima predictor dibandingkan: persistence, Linear Regression, SVR RBF, Fine Tree, dan Random Forest. Pada data uji 2023, seluruh model ML mengalahkan persistence; SVR memberikan RMSE terendah 2,0042 m/s (reduksi 23,74% terhadap persistence 2,6282 m/s), diikuti Random Forest 2,0089 m/s, Linear Regression 2,0272 m/s, dan Fine Tree 2,1515 m/s. Namun R² terbaik hanya 0,0827, jauh di bawah R² 0,97 yang dilaporkan paper. Selisih ini bukan kegagalan implementasi, melainkan konsekuensi dari perubahan protokol: paper melakukan regresi *same-period* pada data bulanan yang telah dihaluskan, sedangkan studi ini meramalkan nilai yang belum teramati pada resolusi harian.
 
 **Kata kunci:** peramalan kecepatan angin, t+1, NWTC M2, SVR, Random Forest, persistence baseline
 
@@ -138,11 +138,11 @@ Audit kebocoran dijalankan sebagai assertion di notebook: `target` harus identik
 
 Delapan lag kecepatan angin (`lag0`–`lag7`), arah angin hari t dalam bentuk `wind_dir_sin` dan `wind_dir_cos`, temperatur, tekanan, RH, presipitasi hari t, serta `doy_sin` dan `doy_cos` untuk hari target.
 
-### 4.3 Pembentukan dataset dan interpolasi
+### 4.3 Pembentukan dataset dan pengisian gap fitur
 
-Dataset supervised dibentuk dari 1.826 baris harian. Interpolasi linear dengan batas 2 hari dan hanya di dalam gap (*inside*) diterapkan **hanya** pada fitur non-kecepatan-angin. Target dan `wind_speed_50m` tidak pernah diinterpolasi; baris dengan target atau lag hilang dibuang.
+Dataset supervised dibentuk dari 1.826 baris harian. Gap pendek pada fitur non-kecepatan-angin diisi dengan nilai terakhir yang diketahui (*forward fill*) maksimal 2 hari, sehingga fitur hari t hanya memakai informasi sampai akhir hari t. Interpolasi linear **tidak** dipakai: pada gap 1–2 hari ia menarik nilai dari hari t+1, yang berarti kebocoran informasi masa depan ke dalam fitur. Target dan `wind_speed_50m` tidak pernah diisi; baris dengan target atau lag hilang dibuang.
 
-Baris final: **1.808 dari 1.826** (18 hari dibuang: 7 hari pertama karena lag 7 belum tersedia, 1 hari terakhir karena target t+1 tidak ada, dan 10 hari yang fiturnya masih kosong setelah interpolasi).
+Baris final: **1.808 dari 1.826** (18 hari dibuang: 7 hari pertama karena lag 7 belum tersedia, 1 hari terakhir karena target t+1 tidak ada, dan 10 hari yang fiturnya masih kosong setelah pengisian).
 
 ### 4.4 Split kronologis
 
@@ -202,19 +202,19 @@ Penyebab yang paling mungkin: paper tidak merinci hyperparameter, mekanisme spli
 
 | Model | RMSE | MSE | MAE | R² | RMSE reduction vs persistence (%) | MAE reduction vs persistence (%) |
 |---|---|---|---|---|---|---|
-| SVR | 2,0044 | 4,0177 | 1,3525 | 0,0825 | 23,7341 | 24,9168 |
-| Random Forest | 2,0045 | 4,0180 | 1,4171 | 0,0824 | 23,7311 | 21,3300 |
-| Linear Regression | 2,0271 | 4,1092 | 1,4401 | 0,0616 | 22,8702 | 20,0523 |
+| SVR | 2,0042 | 4,0170 | 1,3523 | 0,0827 | 23,7409 | 24,9262 |
+| Random Forest | 2,0089 | 4,0355 | 1,4219 | 0,0784 | 23,5648 | 21,0667 |
+| Linear Regression | 2,0272 | 4,1096 | 1,4405 | 0,0615 | 22,8665 | 20,0337 |
 | Fine Tree | 2,1515 | 4,6288 | 1,5357 | −0,0570 | 18,1394 | 14,7465 |
 | Persistence | 2,6282 | 6,9074 | 1,8013 | −0,5774 | 0,0000 | 0,0000 |
 
 Temuan utama:
 
-- **Semua model ML mengalahkan persistence.** Reduksi RMSE berkisar 18,14%–23,73%.
-- **SVR dan Random Forest praktis seri** (RMSE 2,0044 versus 2,0045 m/s; selisih 0,0001 m/s) — perbedaan sebesar ini tidak dapat dianggap bermakna pada 365 observasi.
+- **Semua model ML mengalahkan persistence.** Reduksi RMSE berkisar 18,14%–23,74%.
+- **SVR unggul tipis atas Random Forest** (RMSE 2,0042 versus 2,0089 m/s; selisih 0,0046 m/s atau 0,23%) — perbedaan sebesar ini tidak dapat dianggap bermakna pada 365 observasi.
 - **Linear Regression hanya 1,1% di belakang SVR**, menunjukkan bahwa hubungan linear pada fitur lag sudah menjelaskan sebagian besar sinyal yang dapat dipelajari.
 - **Fine Tree adalah satu-satunya model dengan R² negatif** (−0,0570), artinya lebih buruk daripada memprediksi rata-rata uji, meskipun masih lebih baik daripada persistence.
-- **R² maksimum hanya 0,0825.** Sebagian besar varians harian tidak dapat dijelaskan oleh informasi sampai akhir hari t.
+- **R² maksimum hanya 0,0827.** Sebagian besar varians harian tidak dapat dijelaskan oleh informasi sampai akhir hari t.
 
 ### 6.2 Hyperparameter final
 
@@ -222,9 +222,9 @@ Temuan utama:
 |---|---|---|
 | SVR | C = 1, ε = 0,01, γ = scale | 2,0187 |
 | Fine Tree | `max_depth` = 5, `min_samples_leaf` = 8 | 2,0325 |
-| Random Forest | `n_estimators` = 300, `max_depth` = 20, `min_samples_leaf` = 4, `max_features` = sqrt | 1,9749 |
+| Random Forest | `n_estimators` = 300, `max_depth` = 20, `min_samples_leaf` = 4, `max_features` = sqrt | 1,9725 |
 
-Random Forest memiliki RMSE validasi terbaik, tetapi keunggulan itu tidak berlanjut ke test: pada 2023 SVR dan Random Forest kembali seri dalam 0,0001 m/s. Ini contoh klasik bahwa peringkat model pada satu tahun validasi tidak otomatis berlaku pada tahun berikutnya.
+Random Forest memiliki RMSE validasi terbaik, tetapi keunggulan itu tidak berlanjut ke test: pada 2023 SVR justru lebih baik (2,0042 versus 2,0089 m/s). Ini contoh klasik bahwa peringkat model pada satu tahun validasi tidak otomatis berlaku pada tahun berikutnya.
 
 ### 6.3 Feature importance
 
@@ -232,14 +232,14 @@ Permutation importance dihitung pada model ML terbaik (SVR) dengan `n_repeats=30
 
 | Peringkat | Fitur | Permutation importance (mean ± std) | RF impurity | Koefisien LR (setelah scaling) |
 |---|---|---|---|---|
-| 1 | `wind_dir_sin` | 0,0379 ± 0,0156 | 0,0644 | −0,2162 |
-| 2 | `wind_dir_cos` | 0,0311 ± 0,0139 | 0,0684 | −0,2514 |
-| 3 | `doy_cos` | 0,0304 ± 0,0162 | 0,1043 | 0,5512 |
-| 4 | `temperature_50m` | 0,0258 ± 0,0082 | 0,0613 | 0,3815 |
-| 5 | `relative_humidity` | 0,0132 ± 0,0072 | 0,0881 | −0,2292 |
-| 6 | `wind_speed_lag4` | 0,0116 ± 0,0044 | 0,0482 | −0,0050 |
-| 7 | `pressure` | 0,0112 ± 0,0049 | 0,0861 | −1,0338 |
-| 8 | `wind_speed_lag0` | 0,0080 ± 0,0106 | 0,1283 | 1,6058 |
+| 1 | `wind_dir_sin` | 0,0381 ± 0,0156 | 0,0644 | −0,2174 |
+| 2 | `wind_dir_cos` | 0,0312 ± 0,0139 | 0,0682 | −0,2522 |
+| 3 | `doy_cos` | 0,0306 ± 0,0162 | 0,1041 | 0,5544 |
+| 4 | `temperature_50m` | 0,0262 ± 0,0082 | 0,0612 | 0,3897 |
+| 5 | `relative_humidity` | 0,0131 ± 0,0072 | 0,0873 | −0,2206 |
+| 6 | `wind_speed_lag4` | 0,0115 ± 0,0044 | 0,0481 | −0,0055 |
+| 7 | `pressure` | 0,0113 ± 0,0049 | 0,0859 | −1,0300 |
+| 8 | `wind_speed_lag0` | 0,0080 ± 0,0107 | 0,1293 | 1,6086 |
 
 ![Feature importance](results/figures/fig_feature_importance.png)
 *Gambar 6. Sepuluh fitur teratas menurut permutation importance pada model ML terbaik (SVR).*
@@ -248,42 +248,39 @@ Catatan interpretasi:
 
 - **Arah angin (sin/cos) adalah fitur paling penting**, bukan temperatur. Ini berbeda dari klaim paper bahwa temperatur dominan.
 - **`doy_cos` (musim) berada di peringkat ketiga**, masuk akal karena rezim angin di Boulder sangat musiman.
-- **Beberapa lag memiliki permutation importance negatif** (`wind_speed_lag2` −0,0308; `wind_speed_lag7` −0,0051). Nilai negatif muncul karena lag kecepatan angin saling berkorelasi tinggi: ketika satu lag dikocok, model masih dapat memakai lag lain, sehingga pengocokan justru tampak menurunkan error. Karena itu peringkat individual lag tidak boleh dibaca sebagai "lag ini tidak berguna"; yang dapat disimpulkan adalah lag secara keseluruhan memberi kontribusi lebih kecil daripada arah angin dan musim.
+- **Beberapa lag memiliki permutation importance negatif** (`wind_speed_lag2` −0,0309; `wind_speed_lag7` −0,0051). Nilai negatif muncul karena lag kecepatan angin saling berkorelasi tinggi: ketika satu lag dikocok, model masih dapat memakai lag lain, sehingga pengocokan justru tampak menurunkan error. Karena itu peringkat individual lag tidak boleh dibaca sebagai "lag ini tidak berguna"; yang dapat disimpulkan adalah lag secara keseluruhan memberi kontribusi lebih kecil daripada arah angin dan musim.
 - **Koefisien Linear Regression hanya bermakna setelah scaling** Min-Max ke [−1, 1]; besarnya koefisien tidak dapat dibandingkan langsung dengan besaran fisik variabel asli.
 
 ### 6.4 Error per musim
 
-| Musim | Model | RMSE | MAE | n |
-|---|---|---|---|---|
-| DJF | SVR | 2,7292 | 2,1661 | 90 |
-| DJF | Persistence | 3,6818 | 2,7921 | 90 |
-| MAM | SVR | 2,2762 | 1,4382 | 92 |
-| MAM | Persistence | 2,7714 | 1,8608 | 92 |
-| JJA | SVR | 0,9051 | 0,6693 | 92 |
-| JJA | Persistence | 1,2220 | 0,9702 | 92 |
-| SON | SVR | 1,6378 | 1,1519 | 91 |
-| SON | Persistence | 2,2415 | 1,6016 | 91 |
+RMSE pada test 2023, dipilah menurut musim target (`error_by_season.csv`):
+
+| Musim | SVR | Random Forest | Linear Regression | Fine Tree | Persistence | n |
+|---|---|---|---|---|---|---|
+| DJF | 2,7290 | 2,8258 | 2,8151 | 2,9944 | 3,6818 | 90 |
+| MAM | 2,2758 | 2,1559 | 2,1699 | 2,2919 | 2,7714 | 92 |
+| JJA | 0,9051 | 0,9214 | 0,9661 | 1,0743 | 1,2220 | 92 |
+| SON | 1,6378 | 1,6529 | 1,7152 | 1,7946 | 2,2415 | 91 |
 
 ![Error per musim](results/figures/fig_error_by_season.png)
-*Gambar 7. RMSE per musim pada test 2023, model terbaik versus persistence.*
+*Gambar 7. RMSE per musim pada test 2023 untuk keempat model ML dan persistence.*
 
-Musim dingin (DJF) adalah periode tersulit (RMSE 2,7292 m/s) dan musim panas (JJA) yang termudah (0,9051 m/s). Pola ini konsisten dengan variabilitas angin yang lebih besar pada musim dingin. Keunggulan SVR atas persistence tetap ada di keempat musim, dengan selisih terbesar pada DJF (0,9526 m/s) dan terkecil pada JJA (0,3169 m/s).
+Musim dingin (DJF) adalah periode tersulit (RMSE SVR 2,7290 m/s) dan musim panas (JJA) yang termudah (0,9051 m/s). Pola ini konsisten dengan variabilitas angin yang lebih besar pada musim dingin. Keempat model ML mengalahkan persistence di keempat musim, dengan keunggulan SVR terbesar pada DJF (0,9528 m/s) dan terkecil pada JJA (0,3169 m/s). Peringkat antar model ML sendiri tidak stabil: SVR terbaik pada DJF, JJA, dan SON, tetapi pada MAM Random Forest (2,1559) dan Linear Regression (2,1699) lebih baik daripada SVR (2,2758).
 
 ### 6.5 Error per level kecepatan angin
 
-| Level | Model | RMSE | MAE | n |
-|---|---|---|---|---|
-| Rendah | SVR | 1,5086 | 1,2375 | 122 |
-| Rendah | Persistence | 2,2903 | 1,5718 | 122 |
-| Sedang | SVR | 0,7775 | 0,5842 | 121 |
-| Sedang | Persistence | 1,6524 | 1,1303 | 121 |
-| Tinggi | SVR | 3,0240 | 2,2295 | 122 |
-| Tinggi | Persistence | 3,5654 | 2,6964 | 122 |
+RMSE pada test 2023, dipilah menurut tertile kecepatan angin target (`error_by_level.csv`):
+
+| Level | SVR | Random Forest | Linear Regression | Fine Tree | Persistence | n |
+|---|---|---|---|---|---|---|
+| Rendah | 1,5084 | 1,8936 | 1,9098 | 2,0014 | 2,2903 | 122 |
+| Sedang | 0,7776 | 1,0283 | 0,9996 | 1,2582 | 1,6524 | 121 |
+| Tinggi | 3,0237 | 2,7275 | 2,7671 | 2,8762 | 3,5654 | 122 |
 
 ![Error per level](results/figures/fig_error_by_level.png)
-*Gambar 8. RMSE per tertile kecepatan angin target.*
+*Gambar 8. RMSE per tertile kecepatan angin target untuk keempat model ML dan persistence.*
 
-Error terbesar terjadi pada tertile kecepatan angin tinggi (RMSE 3,0240 m/s). Ini adalah kelemahan yang penting secara operasional: justru pada kondisi angin kencang — saat daya yang dibangkitkan paling besar — model paling tidak akurat. Pada level rendah dan sedang, model jauh lebih baik daripada persistence (selisih 0,78 m/s dan 0,87 m/s).
+Error SVR terbesar terjadi pada tertile kecepatan angin tinggi (RMSE 3,0237 m/s). Ini adalah kelemahan yang penting secara operasional: justru pada kondisi angin kencang — saat daya yang dibangkitkan paling besar — model terbaik secara agregat paling tidak akurat. Menariknya, pada tertile tinggi Random Forest (2,7275), Linear Regression (2,7671), dan Fine Tree (2,8762) semuanya lebih baik daripada SVR, kebalikan dari pola pada tertile rendah dan sedang. Pada level rendah dan sedang, SVR jauh lebih baik daripada persistence (selisih 0,7818 m/s dan 0,8748 m/s).
 
 ### 6.6 Visualisasi prediksi pada test
 
@@ -296,7 +293,7 @@ Error terbesar terjadi pada tertile kecepatan angin tinggi (RMSE 3,0240 m/s). In
 ![Residual](results/figures/fig_residuals.png)
 *Gambar 11. Distribusi residual model terbaik (predicted − actual).*
 
-Rata-rata residual adalah −0,2547 m/s dengan standar deviasi 1,9909 m/s: model cenderung sedikit *under-predict*. Sebaran pada Gambar 10 menunjukkan model menyusut ke arah rata-rata — nilai ekstrem tinggi dan rendah tidak terprediksi dengan baik, pola yang khas untuk model regresi pada deret waktu yang bising.
+Rata-rata residual adalah −0,2546 m/s dengan standar deviasi 1,9907 m/s: model cenderung sedikit *under-predict*. Sebaran pada Gambar 10 menunjukkan model menyusut ke arah rata-rata — nilai ekstrem tinggi dan rendah tidak terprediksi dengan baik, pola yang khas untuk model regresi pada deret waktu yang bising.
 
 ---
 
@@ -304,7 +301,7 @@ Rata-rata residual adalah −0,2547 m/s dengan standar deviasi 1,9909 m/s: model
 
 ### 7.1 Mengapa R² turun drastis?
 
-R² maksimum pada tugas t+1 adalah 0,0825, sedangkan replikasi bulanan mencapai 0,4819 dan paper melaporkan 0,97. Penurunan ini bukan tanda pipeline rusak, melainkan konsekuensi dari tiga perubahan protokol yang semuanya sudah terverifikasi:
+R² maksimum pada tugas t+1 adalah 0,0827, sedangkan replikasi bulanan mencapai 0,4819 dan paper melaporkan 0,97. Penurunan ini bukan tanda pipeline rusak, melainkan konsekuensi dari tiga perubahan protokol yang semuanya sudah terverifikasi:
 
 1. **Penghalusan agregasi.** Rata-rata bulanan hampir menghapus varians harian. Standar deviasi target bulanan hanya 0,7070 m/s, sedangkan target harian 2,1418 m/s — tiga kali lipat lebih besar.
 2. **Horizon peramalan.** Regresi *same-period* memakai informasi pada periode yang sama dengan target; peramalan t+1 hanya boleh memakai informasi sampai akhir hari t.
@@ -312,11 +309,11 @@ R² maksimum pada tugas t+1 adalah 0,0825, sedangkan replikasi bulanan mencapai 
 
 ### 7.2 Apakah model non-linear mengungguli Linear Regression?
 
-Secara statistik, **tidak secara meyakinkan.** SVR (2,0044) dan Random Forest (2,0045) hanya unggul 1,1% atas Linear Regression (2,0271) dalam RMSE, sementara Fine Tree kalah. Dengan 365 observasi uji dan selisih sebesar itu, klaim bahwa model non-linear "lebih baik" tidak dapat dipertahankan. Yang dapat dikatakan: model non-linear memberi nilai tambah yang kecil namun konsisten terhadap persistence, dan Random Forest menyediakan kepentingan fitur yang berguna untuk interpretasi.
+Secara statistik, **tidak secara meyakinkan.** SVR (2,0042) unggul 1,1% dan Random Forest (2,0089) unggul 0,9% atas Linear Regression (2,0272) dalam RMSE, sementara Fine Tree kalah. Dengan 365 observasi uji dan selisih sebesar itu, klaim bahwa model non-linear "lebih baik" tidak dapat dipertahankan. Yang dapat dikatakan: model non-linear memberi nilai tambah yang kecil namun konsisten terhadap persistence, dan Random Forest menyediakan kepentingan fitur yang berguna untuk interpretasi.
 
 ### 7.3 Apakah ML mengalahkan persistence?
 
-**Ya, pada semua model dan semua musim.** Ini temuan positif: informasi historis dan meteorologi hari t memang memiliki daya prediksi untuk hari t+1. Namun perlu ditekankan bahwa persistence sendiri sudah merupakan baseline yang kuat (R² −0,5774 berarti lebih buruk daripada rata-rata uji, tetapi RMSE-nya hanya 2,6282 m/s), dan keunggulan 23,73% masih menyisakan error 2,0044 m/s — sekitar 46% dari rata-rata kecepatan angin harian (4,3967 m/s). Untuk aplikasi operasional, error sebesar ini masih terlalu besar untuk dijadikan dasar penjadwalan tanpa interval ketidakpastian.
+**Ya — untuk keempat model ML, di keempat musim, dan di ketiga level kecepatan angin.** Klaim ini dapat diperiksa langsung pada `results/error_by_season.csv` dan `results/error_by_level.csv`: RMSE persistence selalu yang tertinggi pada setiap sel (misalnya DJF 3,6818 versus 2,7290 untuk SVR; tertile tinggi 3,5654 versus 3,0237), dan model ML terlemah sekalipun (Fine Tree) tetap lebih baik daripada persistence di setiap musim maupun level. Ini temuan positif: informasi historis dan meteorologi hari t memang memiliki daya prediksi untuk hari t+1. Namun perlu ditekankan bahwa persistence sendiri sudah merupakan baseline yang kuat (R² −0,5774 berarti lebih buruk daripada rata-rata uji, tetapi RMSE-nya hanya 2,6282 m/s), dan keunggulan 23,74% masih menyisakan error 2,0042 m/s — sekitar 46% dari rata-rata kecepatan angin harian (4,3967 m/s). Untuk aplikasi operasional, error sebesar ini masih terlalu besar untuk dijadikan dasar penjadwalan tanpa interval ketidakpastian.
 
 ### 7.4 Mengapa hasil berbeda dari paper?
 
@@ -327,7 +324,7 @@ Selain alasan pada 7.1, replikasi bulanan juga tidak mereproduksi angka paper (R
 - Arah angin dan musim lebih informatif daripada temperatur untuk horizon satu hari.
 - Model linear sudah mendekati batas kemampuan informasi yang tersedia; menambah kompleksitas model bukan prioritas.
 - Error terbesar ada pada angin kencang dan musim dingin, sehingga peningkatan kualitas prakiraan pada kondisi tersebut (misalnya dengan data NWP atau resolusi per jam) lebih bernilai daripada mengganti algoritma.
-- Random Forest layak dipertahankan sebagai model interpretatif, meskipun performanya seri dengan SVR.
+- Random Forest layak dipertahankan sebagai model interpretatif, meskipun performanya sedikit di bawah SVR (2,0089 versus 2,0042 m/s) dan lebih baik pada kondisi angin kencang.
 
 ---
 
@@ -348,11 +345,11 @@ Selain alasan pada 7.1, replikasi bulanan juga tidak mereproduksi angka paper (R
 
 ## 9. Kesimpulan
 
-1. **Model yang menang pada data bulanan tidak otomatis menang pada tugas t+1.** Linear Regression menang pada replikasi bulanan (RMSE 0,4923; R² 0,4819), tetapi pada tugas t+1 SVR memberikan RMSE terendah (2,0044 m/s), meskipun selisihnya dari Linear Regression hanya 1,1%.
-2. **Random Forest tidak mengungguli model lain secara bermakna.** RMSE-nya 2,0045 m/s, praktis identik dengan SVR, dan unggul hanya dalam RMSE validasi 2022 (1,9749).
-3. **Fitur paling berpengaruh adalah arah angin (`wind_dir_sin` 0,0379; `wind_dir_cos` 0,0311) dan musim (`doy_cos` 0,0304), bukan temperatur** (0,0258). Klaim dominasi temperatur pada paper tidak berlaku pada tugas t+1 di lokasi ini.
-4. **Performa turun drastis ketika tugas diubah menjadi peramalan t+1:** R² dari 0,4819 (bulanan *same-period*) menjadi 0,0825 (harian t+1). Penurunan ini mencerminkan hilangnya penghalusan dan hilangnya informasi masa depan, bukan kegagalan implementasi.
-5. **Semua model ML mengalahkan persistence** (reduksi RMSE 18,14%–23,73%), sehingga informasi historis memiliki nilai prediktif nyata — tetapi error absolut 2,0044 m/s masih terlalu besar untuk keputusan operasional tanpa interval ketidakpastian.
+1. **Model yang menang pada data bulanan tidak otomatis menang pada tugas t+1.** Linear Regression menang pada replikasi bulanan (RMSE 0,4923; R² 0,4819), tetapi pada tugas t+1 SVR memberikan RMSE terendah (2,0042 m/s), meskipun selisihnya dari Linear Regression hanya 1,1%.
+2. **Random Forest tidak mengungguli model lain secara bermakna.** RMSE-nya 2,0089 m/s, hanya 0,0046 m/s di atas SVR, dan unggul hanya dalam RMSE validasi 2022 (1,9725).
+3. **Fitur paling berpengaruh adalah arah angin (`wind_dir_sin` 0,0381; `wind_dir_cos` 0,0312) dan musim (`doy_cos` 0,0306), bukan temperatur** (0,0262). Klaim dominasi temperatur pada paper tidak berlaku pada tugas t+1 di lokasi ini.
+4. **Performa turun drastis ketika tugas diubah menjadi peramalan t+1:** R² dari 0,4819 (bulanan *same-period*) menjadi 0,0827 (harian t+1). Penurunan ini mencerminkan hilangnya penghalusan dan hilangnya informasi masa depan, bukan kegagalan implementasi.
+5. **Semua model ML mengalahkan persistence** (reduksi RMSE 18,14%–23,74%) pada setiap musim dan level kecepatan angin, sehingga informasi historis memiliki nilai prediktif nyata — tetapi error absolut 2,0042 m/s masih terlalu besar untuk keputusan operasional tanpa interval ketidakpastian.
 
 ---
 
@@ -378,9 +375,9 @@ Sumber: `results/best_params.json`.
 
 | Model | Hyperparameter | RMSE validasi 2022 |
 |---|---|---|
-| SVR | `C` = 1, `epsilon` = 0,01, `gamma` = scale | 2,018653675755969 |
+| SVR | `C` = 1, `epsilon` = 0,01, `gamma` = scale | 2,0186600753618062 |
 | Fine Tree | `max_depth` = 5, `min_samples_leaf` = 8 | 2,032548887802719 |
-| Random Forest | `n_estimators` = 300, `max_depth` = 20, `min_samples_leaf` = 4, `max_features` = sqrt | 1,9748501685540825 |
+| Random Forest | `n_estimators` = 300, `max_depth` = 20, `min_samples_leaf` = 4, `max_features` = sqrt | 1,9725057460045887 |
 
 ### B. Lingkungan dan reproducibility
 

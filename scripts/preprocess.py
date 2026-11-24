@@ -96,6 +96,19 @@ def parse_midc(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+def fill_feature_gaps(
+    df: pd.DataFrame, columns: list[str], limit: int = 2
+) -> pd.DataFrame:
+    """Isi gap fitur dengan nilai terakhir yang diketahui saja (ffill).
+
+    Interpolasi linear akan menarik nilai dari hari berikutnya, sehingga fitur
+    hari t memakai informasi t+1. Forward fill hanya memakai masa lalu.
+    """
+    out = df.copy()
+    out[columns] = out[columns].ffill(limit=limit)
+    return out
+
+
 def _vector_mean_deg(direction: pd.Series, keys) -> pd.Series:
     radians = np.deg2rad(direction)
     sin_mean = np.sin(radians).groupby(keys).mean()

@@ -5,7 +5,7 @@
       "svr__epsilon": 0.01,
       "svr__gamma": "scale"
     },
-    "val_rmse": 2.018653675755969
+    "val_rmse": 2.0186600753618062
   },
   "Fine Tree": {
     "params": {
@@ -21,6 +21,6 @@
       "min_samples_leaf": 4,
       "n_estimators": 300
     },
-    "val_rmse": 1.9748501685540825
+    "val_rmse": 1.9725057460045885
   }
 }

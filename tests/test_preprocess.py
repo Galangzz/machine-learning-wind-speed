@@ -2,7 +2,12 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from scripts.preprocess import aggregate_daily, aggregate_monthly, parse_midc
+from scripts.preprocess import (
+    aggregate_daily,
+    aggregate_monthly,
+    fill_feature_gaps,
+    parse_midc,
+)
 
 
 def raw_row(year=2023, doy=1, mst=0, ws=5.0, wd=180.0, temp=10.0, rh=50.0, pres=805.0, precip=0.0):
@@ -117,3 +122,56 @@ def test_parse_midc_masks_physically_impossible_values():
     assert np.isnan(out.loc[pd.Timestamp("2023-01-01 00:03"), "pressure"])
     assert np.isnan(out.loc[pd.Timestamp("2023-01-01 00:04"), "precipitation"])
     assert out.loc[pd.Timestamp("2023-01-01 00:05"), "wind_speed_50m"] == pytest.approx(5.0)
+
+
+def test_parse_midc_rejects_duplicate_timestamps():
+    raw = pd.DataFrame([raw_row(mst=100), raw_row(mst=100)])
+    with pytest.raises(ValueError, match="duplikat"):
+        parse_midc(raw)
+
+
+def test_monthly_precipitation_sums_daily_maxima_not_minutes():
+    df = pd.concat([minute_day("2023-01-02"), minute_day("2023-01-03")])
+    precip = df.columns.get_loc("precipitation")
+    df.iloc[0, precip] = 5.588  # stale value carried from the previous day
+    df.iloc[1, precip] = 1.0
+    df.iloc[1440, precip] = 7.0  # stale again
+    df.iloc[1441 + 720, precip] = 2.5
+    out = aggregate_monthly(df, min_completeness=0.0)
+    assert out.loc[pd.Period("2023-01", "M"), "precipitation"] == pytest.approx(3.5)
+
+
+def test_monthly_completeness_masks_sparse_months():
+    out = aggregate_monthly(minute_day("2023-01-02"))
+    month = pd.Period("2023-01", "M")
+    assert np.isnan(out.loc[month, "wind_speed_50m"])
+    assert out.loc[month, "n_valid_minutes"] == 1440
+    assert out.loc[month, "completeness"] == pytest.approx(1440 / (31 * 1440))
+
+
+def test_fill_feature_gaps_never_uses_future_values():
+    idx = pd.date_range("2020-01-01", periods=4, freq="D")
+    df = pd.DataFrame({"temperature_50m": [1.0, np.nan, 100.0, 4.0]}, index=idx)
+    filled = fill_feature_gaps(df, ["temperature_50m"])
+    assert filled.loc[idx[1], "temperature_50m"] == pytest.approx(1.0)
+
+
+def test_fill_feature_gaps_respects_limit_and_leading_gaps():
+    idx = pd.date_range("2020-01-01", periods=6, freq="D")
+    df = pd.DataFrame({"pressure": [np.nan, 1.0, np.nan, np.nan, np.nan, 2.0]}, index=idx)
+    filled = fill_feature_gaps(df, ["pressure"], limit=2)
+    assert np.isnan(filled.loc[idx[0], "pressure"])
+    assert filled.loc[idx[2], "pressure"] == pytest.approx(1.0)
+    assert filled.loc[idx[3], "pressure"] == pytest.approx(1.0)
+    assert np.isnan(filled.loc[idx[4], "pressure"])
+    assert filled.loc[idx[5], "pressure"] == pytest.approx(2.0)
+
+
+def test_fill_feature_gaps_leaves_unlisted_columns_untouched():
+    idx = pd.date_range("2020-01-01", periods=3, freq="D")
+    df = pd.DataFrame(
+        {"pressure": [1.0, np.nan, 3.0], "wind_speed_50m": [5.0, np.nan, 6.0]}, index=idx
+    )
+    filled = fill_feature_gaps(df, ["pressure"])
+    assert filled.loc[idx[1], "pressure"] == pytest.approx(1.0)
+    assert np.isnan(filled.loc[idx[1], "wind_speed_50m"])

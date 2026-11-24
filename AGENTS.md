@@ -12,7 +12,7 @@ Tugas Akhir: replikasi ringan Altork (2025) sebagai *sanity check*, lalu ekstens
 ## Source of truth
 
 1. **Design/scope:** `docs/superpowers/specs/2026-11-24-wind-speed-forecasting-design.md`
-2. **Execution plan:** `docs/superpowers/plans/2026-11-24-wind-speed-forecasting.md`
+2. **Execution plan:** `docs/superpowers/plans/2026-11-24-wind-speed-forecasting/00-overview.md`, lalu task plan `01`–`09` di folder yang sama, dikerjakan berurutan.
 3. **Operating rules:** file ini.
 
 Jika terjadi konflik: design doc menang untuk scope, plan menang untuk urutan eksekusi, file ini menang untuk aturan operasional.

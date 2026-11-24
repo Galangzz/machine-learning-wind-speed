@@ -91,3 +91,29 @@ def test_monthly_mean_uses_all_minutes():
     out = aggregate_monthly(df, min_completeness=0.0)
     expected = (1440 * 10.0 + 1080 * 0.0) / (1440 + 1080)
     assert out.loc[pd.Period("2023-01", "M"), "wind_speed_50m"] == pytest.approx(expected)
+
+
+def test_parse_midc_maps_midc_invalid_marker():
+    raw = pd.DataFrame([
+        raw_row(ws=-99999, wd=-99999, temp=-99999, rh=-99999, pres=-99999, precip=-99999),
+    ])
+    out = parse_midc(raw)
+    assert out.iloc[0].isna().all()
+
+
+def test_parse_midc_masks_physically_impossible_values():
+    raw = pd.DataFrame([
+        raw_row(temp=-266.0),
+        raw_row(mst=1, ws=-0.5),
+        raw_row(mst=2, rh=150.0),
+        raw_row(mst=3, pres=50.0),
+        raw_row(mst=4, precip=-1.0),
+        raw_row(mst=5),
+    ])
+    out = parse_midc(raw)
+    assert np.isnan(out.loc[pd.Timestamp("2023-01-01 00:00"), "temperature_50m"])
+    assert np.isnan(out.loc[pd.Timestamp("2023-01-01 00:01"), "wind_speed_50m"])
+    assert np.isnan(out.loc[pd.Timestamp("2023-01-01 00:02"), "relative_humidity"])
+    assert np.isnan(out.loc[pd.Timestamp("2023-01-01 00:03"), "pressure"])
+    assert np.isnan(out.loc[pd.Timestamp("2023-01-01 00:04"), "precipitation"])
+    assert out.loc[pd.Timestamp("2023-01-01 00:05"), "wind_speed_50m"] == pytest.approx(5.0)

@@ -5,7 +5,17 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-SENTINELS = (-9999, -7999, -6999, -999)
+SENTINELS = (-99999, -9999, -7999, -6999, -999)
+
+# Batas fisik longgar untuk situs NWTC M2; nilai di luar ini adalah glitch sensor.
+PHYSICAL_BOUNDS = {
+    "wind_speed_50m": (0.0, 75.0),
+    "wind_dir_50m": (0.0, 360.0),
+    "temperature_50m": (-90.0, 60.0),
+    "relative_humidity": (0.0, 100.0),
+    "pressure": (300.0, 1100.0),
+    "precipitation": (0.0, 500.0),
+}
 
 COLUMN_MAP = {
     "Avg Wind Speed @ 50m [m/s]": "wind_speed_50m",
@@ -72,6 +82,8 @@ def parse_midc(df: pd.DataFrame) -> pd.DataFrame:
     out = out.rename(columns=COLUMN_MAP)[list(COLUMN_MAP.values())]
     out = out.apply(pd.to_numeric, errors="coerce")
     out = out.mask(out.isin(SENTINELS))
+    for column, (low, high) in PHYSICAL_BOUNDS.items():
+        out[column] = out[column].where(out[column].between(low, high))
     out["wind_dir_50m"] = out["wind_dir_50m"] % 360.0
 
     out.index = pd.DatetimeIndex(stamps, name="datetime")
